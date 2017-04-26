@@ -30,6 +30,14 @@ class BoatHandler(webapp2.RequestHandler):
 	
 	def delete(self, id=None): #delete
 		if id:
+			try:
+				s = Slip.query(Slip.current_boat == id).get()
+			except: pass
+			if (s):
+				s.current_boat = None
+				s.arrival_date = None
+				s.put()
+			
 			b = ndb.Key(urlsafe=id).get()
 			b_d = b.to_dict()
 			b_d['self'] = "/boat/" + id
@@ -170,11 +178,21 @@ class SlipHandler(webapp2.RequestHandler):
 	def delete(self, id=None): #delete
 		if id:
 			s = ndb.Key(urlsafe=id).get()
-			s_d = s.to_dict()
-			s_d['self'] = "/slip/" + id
-			self.response.write("Deleted: ")
-			self.response.write(json.dumps(s_d))
-			s.key.delete()
+			if s.current_boat == None:
+				s_d = s.to_dict()
+				s_d['self'] = "/slip/" + id
+				self.response.write("Deleted: ")
+				self.response.write(json.dumps(s_d))
+				s.key.delete()
+			else:
+				b = ndb.Key(urlsafe=s.current_boat).get()
+				b.at_sea = True
+				b.put()
+				s_d = s.to_dict()
+				s_d['self'] = "/slip/" + id
+				self.response.write("Deleted: ")
+				self.response.write(json.dumps(s_d))
+				s.key.delete()
 	
 	#end delete 
 	
@@ -249,6 +267,56 @@ class SlipHandler(webapp2.RequestHandler):
 	#end replace		
 #end SlipHandler
 		
+class Arr_Dep_Handler(webapp2.RequestHandler):		#Arrival/Departure Handler
+	def put(self, id=None):	#Arrive
+		if id:
+			s = ndb.Key(urlsafe=id).get()
+			boat_data = json.loads(self.request.body)
+			if s.current_boat == None:
+				
+				try:
+					s.current_boat = boat_data['boat_id']
+				except: self.abort(400)
+				try:
+					s.arrival_date = boat_data['arrival_date']
+				except: self.abort(400)
+			
+				b = ndb.Key(urlsafe=s.current_boat).get()
+				b.at_sea=False
+				b.put()
+					
+				s.put()
+				s_d = s.to_dict()
+				s_d['self'] = "/slip/" + id
+				self.response.write(json.dumps(s_d))
+				
+			
+			else: self.abort(403)
+	#end Arrive
+	
+	def delete(self, id=None):	#Departure
+		if id:
+			s = ndb.Key(urlsafe=id).get()
+			if s.current_boat == None:
+				self.response.write("No Boat in this Slip")
+			else:
+				b = ndb.Key(urlsafe=s.current_boat).get()
+				b.at_sea = True
+				b.put()
+				
+				s.current_boat = None
+				s.arrival_date = None
+				s.put()
+				s_d = s.to_dict()
+				s_d['self'] = "/slip/" + id
+				self.response.write("Removed Boat from Slip: ")
+				self.response.write(json.dumps(s_d))
+	
+	#end Depart
+		
+#end Arrival/Departure Handler		
+
+	
 class MainPage(webapp2.RequestHandler):
     def get(self):
         self.response.write("Boat/Slip main page")
@@ -259,6 +327,7 @@ new_allowed_methods = allowed_methods.union(('PATCH',))
 webapp2.WSGIApplication.allowed_methods = new_allowed_methods
 app = webapp2.WSGIApplication([
     ('/', MainPage),
+	('/slip/(.*)/boat', Arr_Dep_Handler),
 	('/boat', BoatHandler),
 	('/boat/(.*)', BoatHandler), 
 	('/slip', SlipHandler),
