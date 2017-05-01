@@ -21,42 +21,48 @@ class Slip(ndb.Model):
 	
 class BoatHandler(webapp2.RequestHandler):
 	def post(self):		#add
-		parent_key = ndb.Key(Boat, "parent_boat")
-		boat_data = json.loads(self.request.body)	
-		new_boat = Boat(name=boat_data['name'], type=boat_data['type'], length=boat_data['length'], at_sea=True, parent=parent_key)
-		new_boat.put()
-		new_boat.id = new_boat.key.urlsafe()
-		new_boat.put()
-		boat_dict = new_boat.to_dict()
-		boat_dict['self'] = '/boat/' + new_boat.key.urlsafe()
-		self.response.write(json.dumps(boat_dict))
+		try:
+			parent_key = ndb.Key(Boat, "parent_boat")
+			boat_data = json.loads(self.request.body)	
+			new_boat = Boat(name=boat_data['name'], type=boat_data['type'], length=boat_data['length'], at_sea=True, parent=parent_key)
+			new_boat.put()
+			new_boat.id = new_boat.key.urlsafe()
+			new_boat.put()
+			boat_dict = new_boat.to_dict()
+			boat_dict['self'] = '/boat/' + new_boat.key.urlsafe()
+			self.response.write(json.dumps(boat_dict))
+		except: self.abort(400)
 	#end add
 	
 	def delete(self, id=None): #delete
 		if id:
 			try:
-				s = Slip.query(Slip.current_boat == id).get()
-			except: pass
-			if (s):
-				s.current_boat = None
-				s.arrival_date = None
-				s.put()
-			
-			b = ndb.Key(urlsafe=id).get()
-			b_d = b.to_dict()
-			b_d['self'] = "/boat/" + id
-			self.response.write("Deleted: ")
-			self.response.write(json.dumps(b_d))
-			b.key.delete()
+				try:
+					s = Slip.query(Slip.current_boat == id).get()
+				except: pass
+				if (s):
+					s.current_boat = None
+					s.arrival_date = None
+					s.put()
+				
+				b = ndb.Key(urlsafe=id).get()
+				b_d = b.to_dict()
+				b_d['self'] = "/boat/" + id
+				self.response.write("Deleted: ")
+				self.response.write(json.dumps(b_d))
+				b.key.delete()
+			except: self.abort(404)
 	
 	#end delete 
 	
 	def get(self, id=None):	#view
 		if id:
-			b = ndb.Key(urlsafe=id).get()
-			b_d = b.to_dict()
-			b_d['self'] = "/boat/" + id
-			self.response.write(json.dumps(b_d))
+			try:
+				b = ndb.Key(urlsafe=id).get()
+				b_d = b.to_dict()
+				b_d['self'] = "/boat/" + id
+				self.response.write(json.dumps(b_d))
+			except: self.abort(404)
 		else:				#view all
 			all_boats = Boat.query().fetch()
 			boats_obj = []
@@ -71,7 +77,7 @@ class BoatHandler(webapp2.RequestHandler):
 				cur_obj['at_sea'] = all_boats[i].at_sea
 				boats_obj.append(cur_obj)
 				#self.response.write(cur_obj)
-			self.response.write(boats_obj)
+			self.response.write(json.dumps(boats_obj))
 			#self.response.write(boats_obj[0]["self"])
 			'''
 			boats_obj.append('[')
@@ -117,99 +123,112 @@ class BoatHandler(webapp2.RequestHandler):
 	
 	def patch(self, id=None):		#modify
 		if id:
-			b = ndb.Key(urlsafe=id).get()
-			boat_data = json.loads(self.request.body)
-			try: 
-				boat_data['name']
-				b.name = boat_data['name']
-			except: pass
 			try:
-				boat_data['type']
-				b.type = boat_data['type']
-			except: pass	
-			try:
-				boat_data['length']
-				b.length = boat_data['length']
-			except: pass	
-			try:
-				boat_data['at_sea']
-				b.at_sea = boat_data['at_sea']
-			except: pass	
-			b.put()
-			b_d = b.to_dict()
-			b_d['self'] = "/boat/" + id
-			self.response.write(json.dumps(b_d))
+				b = ndb.Key(urlsafe=id).get()
+				boat_data = json.loads(self.request.body)
+				try: 
+					boat_data['name']
+					b.name = boat_data['name']
+				except: pass
+				try:
+					boat_data['type']
+					b.type = boat_data['type']
+				except: pass	
+				try:
+					boat_data['length']
+					b.length = boat_data['length']
+				except: pass	
+				try:
+					boat_data['at_sea']
+					b.at_sea = boat_data['at_sea']
+				except: pass	
+				b.put()
+				b_d = b.to_dict()
+				b_d['self'] = "/boat/" + id
+				self.response.write(json.dumps(b_d))
+			except: self.abort(404)
+		else: self.abort(400)
 	#end modify	
 	
 	def put(self, id=None):		#replace
 		if id:
-			parent_key = ndb.Key(Boat, "parent_boat")
-			b = ndb.Key(urlsafe=id).get()
-			boat_data = json.loads(self.request.body)
-			try: 
-				boat_data['name']
-				b.name = boat_data['name']
-			except: self.abort(400)
 			try:
-				boat_data['type']
-				b.type = boat_data['type']
-			except: b.type=None
-			try:
-				boat_data['length']
-				b.length = boat_data['length']
-			except: b.length=None	
-			try:
-				boat_data['at_sea']
-				b.at_sea = boat_data['at_sea']
-			except: None	
-			b.put()
-			b_d = b.to_dict()
-			b_d['self'] = "/boat/" + id
-			self.response.write(json.dumps(b_d))
+				parent_key = ndb.Key(Boat, "parent_boat")
+				b = ndb.Key(urlsafe=id).get()
+				boat_data = json.loads(self.request.body)
+				try: 
+					boat_data['name']
+					b.name = boat_data['name']
+				except: self.abort(400)
+				try:
+					boat_data['type']
+					b.type = boat_data['type']
+				except: b.type=None
+				try:
+					boat_data['length']
+					b.length = boat_data['length']
+				except: b.length=None	
+				try:
+					boat_data['at_sea']
+					b.at_sea = boat_data['at_sea']
+				except: None	
+				b.put()
+				b_d = b.to_dict()
+				b_d['self'] = "/boat/" + id
+				self.response.write(json.dumps(b_d))
+			except: self.abort(404)
+		else: self.abort(400)
 	#end replace		
 			
 #end BoatHandler			
 			
 class SlipHandler(webapp2.RequestHandler):
 	def post(self):		#add
-		parent_key = ndb.Key(Slip, "parent_slip")
-		slip_data = json.loads(self.request.body)
-		new_slip = Slip(number=slip_data['number'], parent=parent_key)
-		new_slip.put()
-		new_slip.id = new_slip.key.urlsafe()
-		new_slip.put()
-		slip_dict = new_slip.to_dict()
-		slip_dict['self'] = '/slip/' + new_slip.key.urlsafe()
-		self.response.write(json.dumps(slip_dict))
+		try:
+			parent_key = ndb.Key(Slip, "parent_slip")
+			slip_data = json.loads(self.request.body)
+			new_slip = Slip(number=slip_data['number'], parent=parent_key)
+			new_slip.put()
+			new_slip.id = new_slip.key.urlsafe()
+			new_slip.put()
+			slip_dict = new_slip.to_dict()
+			slip_dict['self'] = '/slip/' + new_slip.key.urlsafe()
+			self.response.write(json.dumps(slip_dict))
+		except: self.abort(400)
 	#end add
 	
 	def delete(self, id=None): #delete
 		if id:
-			s = ndb.Key(urlsafe=id).get()
-			if s.current_boat == None:
-				s_d = s.to_dict()
-				s_d['self'] = "/slip/" + id
-				self.response.write("Deleted: ")
-				self.response.write(json.dumps(s_d))
-				s.key.delete()
-			else:
-				b = ndb.Key(urlsafe=s.current_boat).get()
-				b.at_sea = True
-				b.put()
-				s_d = s.to_dict()
-				s_d['self'] = "/slip/" + id
-				self.response.write("Deleted: ")
-				self.response.write(json.dumps(s_d))
-				s.key.delete()
+			try:
+				s = ndb.Key(urlsafe=id).get()
+				if s.current_boat == None:
+					s_d = s.to_dict()
+					s_d['self'] = "/slip/" + id
+					self.response.write("Deleted: ")
+					self.response.write(json.dumps(s_d))
+					s.key.delete()
+				else:
+					b = ndb.Key(urlsafe=s.current_boat).get()
+					b.at_sea = True
+					b.put()
+					s_d = s.to_dict()
+					s_d['self'] = "/slip/" + id
+					self.response.write("Deleted: ")
+					self.response.write(json.dumps(s_d))
+					s.key.delete()
+			except: self.abort(404)
+			
 	
 	#end delete 
 	
 	def get(self, id=None):	#view
 		if id:
-			s = ndb.Key(urlsafe=id).get()
-			s_d = s.to_dict()
-			s_d['self'] = "/slip/" + id
-			self.response.write(json.dumps(s_d))
+			try:
+				s = ndb.Key(urlsafe=id).get()
+				s_d = s.to_dict()
+				s_d['self'] = "/slip/" + id
+				self.response.write(json.dumps(s_d))
+			except: self.abort(404)
 		else:				#view all
 			all_slips = Slip.query().fetch()
 			slips_obj = []
@@ -223,56 +242,62 @@ class SlipHandler(webapp2.RequestHandler):
 				cur_obj['arrival_date'] = all_slips[i].arrival_date
 				slips_obj.append(cur_obj)
 				#self.response.write(cur_obj)
-			self.response.write(slips_obj)
+			self.response.write(json.dumps(slips_obj))
 			#self.response.write(boats_obj[0]["self"])	
 		
 	#end view	
 
 	def patch(self, id=None):		#modify
 		if id:
-			s = ndb.Key(urlsafe=id).get()
-			slip_data = json.loads(self.request.body)
-			try: 
-				slip_data['number']
-				s.number = slip_data['number']
-			except: pass
 			try:
-				slip_data['current_boat']
-				s.current_boat = slip_data['current_boat']
-			except: pass	
-			try:
-				slip_data['arrival_date']
-				s.arrival_date = slip_data['arrival_date']
-			except: pass	
-			
-			s.put()
-			s_d = s.to_dict()
-			s_d['self'] = "/slip/" + id
-			self.response.write(json.dumps(s_d))
+				s = ndb.Key(urlsafe=id).get()
+				slip_data = json.loads(self.request.body)
+				try: 
+					slip_data['number']
+					s.number = slip_data['number']
+				except: pass
+				try:
+					slip_data['current_boat']
+					s.current_boat = slip_data['current_boat']
+				except: pass	
+				try:
+					slip_data['arrival_date']
+					s.arrival_date = slip_data['arrival_date']
+				except: pass	
+				
+				s.put()
+				s_d = s.to_dict()
+				s_d['self'] = "/slip/" + id
+				self.response.write(json.dumps(s_d))
+			except: self.abort(404)
+		else: self.abort(400)
 	#end modify		
 	
 	def put(self, id=None):		#replace
 		if id:
-			parent_key = ndb.Key(Slip, "parent_slip")
-			s = ndb.Key(urlsafe=id).get()
-			slip_data = json.loads(self.request.body)
-			try: 
-				slip_data['number']
-				s.number = slip_data['number']
-			except: self.abort(400)
 			try:
-				slip_data['current_boat']
-				s.current_boat = slip_data['current_boat']
-			except: s.current_boat=None
-			try:
-				slip_data['arrival_date']
-				s.arrival_date = slip_data['arrival_date']
-			except: s.arrival_date=None	
-	
-			s.put()
-			s_d = s.to_dict()
-			s_d['self'] = "/slip/" + id
-			self.response.write(json.dumps(s_d))
+				parent_key = ndb.Key(Slip, "parent_slip")
+				s = ndb.Key(urlsafe=id).get()
+				slip_data = json.loads(self.request.body)
+				try: 
+					slip_data['number']
+					s.number = slip_data['number']
+				except: self.abort(400)
+				try:
+					slip_data['current_boat']
+					s.current_boat = slip_data['current_boat']
+				except: s.current_boat=None
+				try:
+					slip_data['arrival_date']
+					s.arrival_date = slip_data['arrival_date']
+				except: s.arrival_date=None	
+		
+				s.put()
+				s_d = s.to_dict()
+				s_d['self'] = "/slip/" + id
+				self.response.write(json.dumps(s_d))
+			except: self.abort(404)
+		else: self.abort(400)
 	#end replace		
 #end SlipHandler
 		
